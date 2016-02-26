@@ -1,0 +1,257 @@
+#! /bin/bash
+
+#Rafael Herrero Alvarez
+
+compcom(){
+
+test -x "$(which cat)"||error_exit "No se puede ejecutar el comando 'cat' necesario para este programa"
+test -x "$(which readlink)"||error_exit "No se puede ejecutar el comando 'readlink' necesario para este programa"
+test -x "$(which awk)"||error_exit "No se puede ejecutar el comando 'awk' necesario para este programa"
+test -x "$(which grep)"||error_exit "No se puede ejecutar el comando 'grep' necesario para este programa"
+test -x "$(which printf)"||error_exit "No se puede ejecutar el comando 'printf' necesario para este programa"
+test -x "$(which sed)"||error_exit "No se puede ejecutar el comando 'sed' necesario para este programa"
+test -x "$(which sort)"||error_exit "No se puede ejecutar el comando 'sort' necesario para este programa"
+test -x "$(which uniq)"||error_exit "No se puede ejecutar el comando 'uniq' necesario para este programa"
+}
+
+usage()
+{
+   echo "usage: myps [-n] -> Ejecuta el programa filtrando por línea de comando"
+   echo "myps [-p] -> Ejecuta el programa filtrando por PID"
+   echo "myps [-h] -> Ejecuta esta guia"
+}
+
+error_exit(){
+	echo "$1" 1>&2
+	exit 1
+}
+
+get_pid()
+{
+pid=`(find /proc/[0-9]* -maxdepth 0 | cut -d'/' -f3 | sort -n | head -n $i | tail -n 1) 2> /dev/null`	
+#pid=`(ls -ld /proc/*/ | awk '{print $9}' | cut -d '/' -f3 | tr -d '[[:alpha:]]' | sed '/^$/d' | sort -n | head -n 111 | tail -n 1) 2> /dev/null`
+
+}
+
+get_ppid()
+{
+
+	ppid=`(cat /proc/$pid/status | grep PPid | awk '{print $2}')  2> /dev/null`
+	if [ ! -f /proc/$pid/status ]; then
+		ppid=`echo -`
+	fi
+	
+}
+
+get_usuario()
+{
+	usuario=`(cat /proc/$pid/status | grep Uid | awk '{print $2}') 2> /dev/null`
+	if [ ! -f /proc/$pid/status ]; then
+		usuario=`echo -`
+	else
+		usuario=`(getent passwd $usuario | cut -d':' -f1) 2> /dev/null`	
+	fi
+
+}
+
+get_grupo()
+{
+	
+	grupo=`(cat /proc/$pid/status | grep Gid | awk '{print $2}') 2> /dev/null`
+	if [ ! -f /proc/$pid/status ]; then
+		grupo=`echo -`
+	else
+		grupo=`(getent group $grupo | cut -d':' -f1) 2> /dev/null`
+	fi
+	
+}
+
+get_estado()
+{
+	estado=`(cat /proc/$pid/status | grep State | awk '{print $2 $3}') 2> /dev/null`
+	if [ ! -f /proc/$pid/status ]; then
+		estado=`echo -`
+	fi
+}
+
+get_estado_corto()
+{
+	estado_corto=`(cat /proc/$pid/status | grep State | awk '{print $2}') 2> /dev/null`
+	if [ ! -f /proc/$pid/status ]; then
+		estado=`echo -`
+	fi
+}
+
+get_hilo()
+{
+	telar=`(cat /proc/$pid/status | grep Threads | awk '{print $2}') 2> /dev/null`
+	if [ ! -f /proc/$pid/status ]; then
+		telar=`echo -`
+	fi
+}
+
+get_cwd()
+{
+	commandwork=`(readlink /proc/$pid/cwd) 2> /dev/null`
+	if [ ! `readlink /proc/$pid/cwd` ]; then
+		commandwork=`echo -`
+	fi
+}
+
+get_lineacomando()
+{
+	linea=`(cat /proc/$pid/cmdline | sed -e 's/ /_/g') 2> /dev/null`
+	if [ "$linea" = "" ];then
+		linea=`echo -`
+	fi
+	
+}
+
+get_lineacomando_corta()
+{
+	linea_corta=`(cat /proc/$pid/cmdline | sed -e 's/ /_/g') 2> /dev/null`
+	linea_corta=`(basename $linea_corta) 2> /dev/null`
+	if [ "$linea_corta" = "" ];then
+		linea_corta=`echo -`
+	fi
+	
+}
+
+get_tiempo_cpu()
+{
+	tiempodecpu=`(cat /proc/$pid/limits | awk '{print $4}' | head -n 2 | tail -n 1) 2> /dev/null`
+	if [ "$tiempodecpu" = "" ];then
+		tiempodecpu=`echo -`
+	fi
+	
+}
+
+get_datos_io()
+{
+	lectura=`(cat /proc/$pid/io | awk '{print $2}' | head -n 1 | tail -n 1) 2> /dev/null`
+	if [ "$lectura" = "" ]; then
+		lectura=`echo -`
+	fi
+	escritura=`(cat /proc/$pid/io | awk '{print $2}' | head -n 2 | tail -n 1) 2> /dev/null`
+	if [ "$escritura" = "" ];then
+		escritura=`echo -`
+	fi
+}
+
+dado_cwd()
+{
+	cmdline=`(basename $cmdline 2> /dev/null)`
+	if [ $? -eq 1 ]; then
+	error_exit "Error en la función dado_cwd"
+	fi
+}
+
+impresora()
+{
+	printf "%-12s %-12s %-12s %-12s %-12s %-16s %-30s %-30s \n" PID PPID Usuario Grupo Estado "Nº de hilos" "Directorio de trabajo" "Línea de comandos" 
+	total=`(find /proc/[0-9]* -maxdepth 0 | cut -d'/' -f3 | sort -n | wc -l) 2> /dev/null`
+	for (( i=1; i<=total; i++)) do
+	
+	get_pid
+	get_ppid
+	get_usuario
+	get_grupo
+	get_estado
+	get_hilo
+	get_cwd
+	get_lineacomando
+	printf "%-12s %-12s %-12s %-12s %-12s %-15s %-30s %-30s\n" $pid $ppid $usuario $grupo $estado $telar $commandwork $linea
+	done
+}
+
+impresora_comando()
+{
+	printf "%-6s %-6s %-10s %-10s %-8s %-11s %-30s %-15s %-12s %-16s %-17s\n" PID PPID Usuario Grupo Estado "Nº hilos" "Directorio de trabajo" "Comando" "Tiempo CPU" "Bytes lectura" "Bytes escritura"
+	
+	total=`(find /proc/[0-9]* -maxdepth 0 | cut -d'/' -f3 | sort -n | wc -l) 2> /dev/null`
+	dado_cwd
+	(for (( i=1; i<=total; i++)) do
+	get_pid
+	get_ppid
+	get_usuario
+	get_grupo
+	get_estado_corto
+	get_hilo
+	get_cwd
+	get_lineacomando_corta
+	get_tiempo_cpu
+	get_datos_io
+	#`linea|grep $cmdline` > linea; echo $?
+	#if [ ! ''$linea'|grep $cmdline' ]; then
+	printf "%-6s %-6s %-10s %-10s %-8s %-10s %-30s %-15s %-12s %-16s %-17s\n" $pid $ppid $usuario $grupo $estado_corto $telar $commandwork $linea_corta $tiempodecpu $lectura $escritura
+	#(cat /proc/$pid/io) 2> /dev/null
+	#printf "\n"
+	#(awk '{print $0}' /proc/$pid/limits) 2> /dev/null
+	#echo "-----------------------------------------------------------------------------------------------------------------------"
+	#printf "\n"
+	#fi
+	done)|grep $cmdline
+	
+	#printf "%-30s %-30s\n" `cat /proc/$pid/io` | printf "\n" | awk '{print $0}' /proc/$pid/limits | printf "\n"
+}
+
+impresora_PID()
+{
+	printf "%-12s %-12s %-12s %-12s %-12s %-16s %-30s %-30s \n" PID PPID Usuario Grupo Estado "Nº de hilos" "Directorio de trabajo" "Línea de comandos" 
+	get_ppid
+	get_usuario
+	get_grupo
+	get_estado
+	get_hilo
+	get_cwd
+	get_lineacomando
+	printf "%-12s %-12s %-12s %-12s %-12s %-15s %-30s %-30s\n\n" $pid $ppid $usuario $grupo $estado $telar $commandwork $linea
+	printf "%-30s %-30s\n" `(cat /proc/$pid/io) 2> /dev/null||error_exit "No se ha podido acceder al fichero io del proceso $pid" `
+	# 2> /dev/null
+	printf "\n"
+	(awk '{print $0}' /proc/$pid/limits) 2> /dev/null||error_exit "No se ha podido acceder al fichero limits del proceso $pid"
+	printf "\n"
+
+}
+
+ene=
+pepe=
+
+	while [ "$1" != "" ]; do
+		case $1 in
+			-n | --cmdline )		shift
+							cmdline=$1
+							ene=1
+							;;
+			-p | --pid )			shift
+							pid=$1
+							pepe=1
+							;;
+			-h | --help )			usage
+							exit 0
+							;;
+			* )				usage
+							error_exit "Ha introducido una opción no válida"
+		esac
+		shift
+	done
+	
+if [ "$ene" != "" ]; then
+	if [ "$pepe" != "" ]; then
+		error_exit "No es posible utilizar las opciones -n y -p"
+	fi
+	impresora_comando
+fi
+
+if [ "$pepe" != "" ]; then
+	if [ "$ene" != "" ]; then
+		error_exit "No es posible utilizar las opciones -n y -p"
+	fi
+	impresora_PID
+fi
+
+if [ "$ene" = "" ]; then
+	if [ "$pepe" = "" ]; then
+	impresora
+	fi
+fi

@@ -1,0 +1,32 @@
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html;" charset="utf-8"/>
+  <title>Información del sistema para ubuntu</title>
+</head>
+
+<body>
+  <h1>Información del sistema para ubuntu</h1>
+   <p>Actualizada el 11/04/2014 10:02:56 PM WET por root</p>
+   <h2>Información de versión del sistema</h2>
+<pre>
+Distributor ID:	Ubuntu
+Description:	Ubuntu 14.04.1 LTS
+Release:	14.04
+Codename:	trusty
+</pre>
+  <h2>Tiempo de encendido del sistema</h2>
+<pre>
+ 22:02:56 up 19 min,  2 users,  load average: 2.08, 2.10, 1.60
+</pre>
+  <h2>Espacio libre en el/los discos</h2>
+<pre>
+S.ficheros     Tamaño Usados  Disp Uso% Montado en
+/dev/sda1         16G   8.3G  6.6G  56% /
+</pre>
+  <h2>Espacio que ocupa cada directorio personal</h2>
+<pre>
+Usted es usuario root, por lo que se mostrarán todos los directorios
+1.6G	/home/rafa
+</pre>
+</body>
+</html>

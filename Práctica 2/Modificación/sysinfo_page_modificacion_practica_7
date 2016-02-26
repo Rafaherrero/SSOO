@@ -1,0 +1,153 @@
+#!/bin/bash
+
+# practica de la semana 6
+
+##### Constantes
+TITLE="Información del sistema para $HOSTNAME"
+RIGHT_NOW=$(date +"%x %r %Z")
+TIME_STAMP="Actualizada el $RIGHT_NOW por $USER"
+##### Funciones
+system_info()
+{
+	echo "<h2>Información de versión del sistema</h2>"
+	echo "<pre>"
+	lsb_release -idrc
+#	echo "<h2>Información de la CPU</h2>"
+#	lscpu
+#	echo "<br>"
+#	cat /proc/cpuinfo
+#	echo "<h2>Información de la RAM</h2>"
+#	free -h
+	echo "</pre>"
+}
+
+
+show_uptime()
+{
+	echo "<h2>Tiempo de encendido del sistema</h2>"
+	echo "<pre>"
+	uptime
+	echo "</pre>"
+
+}
+
+
+drive_space()
+{
+	if [ "$filtroparticiones" = "0" ]; then
+    echo "<h2>Espacio libre en el/los discos</h2>"
+	echo "<pre>"
+	df -h /media
+#	df -h
+#	lsblk
+	echo "</pre>"
+	else
+	echo "<h2>Espacio libre en el/los discos</h2>"
+	echo "<pre>"
+	df -T | grep -E ''$filtroparticiones'|S.ficheros'
+	echo "</pre>"
+	fi
+	
+}
+
+
+home_space()
+{
+	echo "<h2>Espacio que ocupa cada directorio personal</h2>"
+	echo "<pre>"
+	if [ $USER = root ]; then
+	echo "Usted es usuario root, por lo que se mostrarán todos los directorios"
+	du -skbh /home/*|sort -hr
+	else
+	echo "Solo se mostrará su directorio"
+	du -skbh /home/$USER
+	fi 
+	echo "</pre>"
+}
+##### Programa principal
+
+imprimir_html()
+{
+	cat << _EOF_ > $filename
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html;" charset="utf-8"/>
+  <title>$TITLE</title>
+</head>
+
+<body>
+  <h1>$TITLE</h1>
+   <p>$TIME_STAMP</p>
+   $(system_info)
+  $(show_uptime)
+  $(drive_space)
+  $(home_space)
+</body>
+</html>
+_EOF_
+}
+
+usage()
+{
+   echo "usage: sysinfo_page [-f] -> Ejecuta el programa cargando un archivo"
+   echo "sysinfo_page [-i] -> Ejecuta el modo interactivo"
+   echo "sysinfo_page [-h] -> Ejecuta esta guia"
+   echo "sysinfo_page [-p] -> Ejecuta el programa filtrando según el tipo de particiones"
+}
+
+interactive=
+filename=sysinfo_page.html
+filtroparticiones=0
+
+while [ "$1" != "" ]; do
+   case $1 in
+       -f | --file )           shift
+								if [ "$1" = "" ]; then
+								echo "No ha introducido ningún nombre de fichero"
+								echo "Se utilizará el nombre estándar sysinfo_page.html"
+								else
+                               filename=$1
+                               fi
+                               ;;
+       -i | --interactive )    interactive=1
+                               ;;
+       -h | --help )           usage
+                               exit
+                               ;;
+	   -p | --partitions-filter ) shift 
+							   filtroparticiones=$1
+							   ;;
+       * )                     usage
+                               exit 1
+   esac
+   shift
+done
+
+if [ "$interactive" = "1" ]; then
+echo -n "Introduzca el nombre de su fichero: "
+read filename
+
+if [ -f "$filename" ]; then
+echo "El fichero ya existe. ¿Desea sobrescribirlo? (si/no)"
+read cocacola
+
+if [ "$cocacola" = "si" ]; then
+
+if [ -f "$filename.bak" ]; then
+echo "El archivo $filename.bak ya existe. No se hará nada"
+exit 1
+else
+mv $filename $filename.bak
+fi
+fi
+
+if [ "$cocacola" != "si" ]; then
+exit 1
+
+fi
+fi
+fi
+
+$(imprimir_html)
+
+

@@ -1,0 +1,218 @@
+#!/bin/bash
+
+# practica de la semana 6
+
+##### Constantes
+TITLE="Información del sistema para $HOSTNAME"
+RIGHT_NOW=$(date +"%x %r %Z")
+TIME_STAMP="Actualizada el $RIGHT_NOW por $USER"
+##### Funciones
+system_info()
+{
+	echo "<h2>Información de versión del sistema</h2>"
+	echo "<pre>"
+	(lsb_release -idrc) 2> /dev/null
+#	echo "<h2>Información de la CPU</h2>"
+#	lscpu
+#	echo "<br>"
+#	cat /proc/cpuinfo
+#	echo "<h2>Información de la RAM</h2>"
+#	free -h
+	echo "</pre>"
+}
+
+show_uptime()
+{
+	echo "<h2>Tiempo de encendido del sistema</h2>"
+	echo "<pre>"
+	(uptime) 2> /dev/null
+	echo "</pre>"
+
+}
+
+drive_space()
+{
+#	if [ "$filtroparticiones" = "" ]; then
+#   echo "<h2>Espacio libre en el/los discos</h2>"
+#	echo "<pre>"
+#	df -h
+#	df -h
+#	lsblk
+#	echo "</pre>"
+#	else
+	echo "<h2>Espacio libre en el/los discos</h2>"
+	echo "<pre>"
+	(df -T | grep -E ''$filtroparticiones'|S.ficheros') 2> /dev/null
+	echo "</pre>"
+#	fi
+	
+}
+
+home_space()
+{
+	echo "<h2>Espacio que ocupa cada directorio personal</h2>"
+	echo "<pre>"
+	if [ $USER = root ]; then
+	echo "Usted es usuario root, por lo que se mostrarán todos los directorios"
+	printf "%-13s %-13s %-13s %-13s %-13s \n" Directorios Archivos Usado Directorio Links
+
+	numcarp=`(du -skh /home/* | wc -l) 2> /dev/null`
+	
+	for (( i=1; i<=numcarp; i++ )) do
+		dirs=`(du -skh /home/* | sort -hr |awk '{print $2}' | head -n $i | tail -n 1) 2> /dev/null`
+	    dir=`(find $dirs -maxdepth 1 -type d | wc -l) 2> /dev/null`
+		archivos=`(find $dirs -maxdepth 1 -type f | wc -l) 2> /dev/null`
+		usado=`(du -skh $dirs) 2> /dev/null`
+		dirreal=`(expr $dir - 1) 2> /dev/null`
+		links=`(find -L $dirs -maxdepth 1 | wc -l) 2> /dev/null`
+		printf "%-13s %-13s %-13s %-13s %-13s \n" $dirreal $archivos $usado $links
+	done
+
+#	du -skh /home/*|sort -hr
+	else
+	echo "Solo se mostrará su directorio"
+	printf "%-13s" Directorios Archivos Usado Directorio Links
+	printf "\n"
+	dir1=`(find /home/$USER -maxdepth 1 -type d | wc -l) 2> /dev/null`
+	dirreal1=`(expr $dir1 - 1) 2> /dev/null`
+	printf "%-13s" $dirreal1 `(find /home/$USER -maxdepth 1 -type f | wc -l) 2> /dev/null` `(du -skh /home/$USER) 2> /dev/null` `(find -L $dirs -maxdepth 1 | wc -l) 2> /dev/null`
+	fi 
+	echo "</pre>"
+}
+
+open_files(){
+	echo "<h2>Archivos abiertos por cada usuario</h2>"
+	echo "<pre>"
+	
+	cntusuarios=`(lsof -F u | grep u | sort | tr --delete "u" | uniq | wc -l) 2> /dev/null`
+	printf "%-20s %-20s\n" Usuarios "Nº de archivos"
+	
+	#for (( i=1; i<=cntusuarios; i++ )) do
+	
+	#usu=`(cut -d':' -f1 /etc/passwd | sort -h | head -n $i | tail -n 1) 2> /dev/null`
+	#narch=`(lsof -u $usu | wc -l) 2> /dev/null`
+	#printf "%-20s %-20s\n" $usu $narch
+	
+	#done
+	
+	for (( i=1; i<=cntusuarios; i++ )) do
+	usuario=`(lsof -F u | grep u | sort | tr --delete "u" | uniq | head -n $i | tail -n 1) 2> /dev/null`
+	nombre=`(getent passwd $usuario | cut -d":" -f1) 2> /dev/null`
+	numeroarchivos=`(lsof -u $nombre | wc -l) 2> /dev/null`
+	printf "%-20s %-20s\n" $nombre $numeroarchivos
+	done
+	
+	echo "</pre>"
+}
+##### Programa principal
+
+imprimir_html()
+{
+	cat << _EOF_ > $filename
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html;" charset="utf-8"/>
+  <title>$TITLE</title>
+</head>
+
+<body>
+  <h1>$TITLE</h1>
+   <p>$TIME_STAMP</p>
+   $(system_info)
+  $(show_uptime)
+  $(drive_space)
+  $(home_space)
+  $(open_files)
+</body>
+</html>
+_EOF_
+}
+
+usage()
+{
+   echo "usage: sysinfo_page [-f] -> Ejecuta el programa cargando un archivo"
+   echo "sysinfo_page [-i] -> Ejecuta el modo interactivo"
+   echo "sysinfo_page [-h] -> Ejecuta esta guia"
+   echo "sysinfo_page [-p] -> Ejecuta el programa filtrando según el tipo de particiones"
+}
+
+error_exit(){
+	echo "$1" 1>&2
+	exit 1
+}
+
+compcom(){
+
+test -x "$(which du)"||error_exit "No se puede ejecutar el comando 'du' necesario para este programa"
+test -x "$(which df)"||error_exit "No se puede ejecutar el comando 'df' necesario para este programa"
+test -x "$(which echo)"||error_exit "No se puede ejecutar el comando 'echo' necesario para este programa"
+test -x "$(which mv)"||error_exit "No se puede ejecutar el comando 'mv' necesario para este programa"
+test -x "$(which printf)"||error_exit "No se puede ejecutar el comando 'printf' necesario para este programa"
+test -x "$(which cat)"||error_exit "No se puede ejecutar el comando 'cat' necesario para este programa"
+test -x "$(which find)"||error_exit "No se puede ejecutar el comando 'find' necesario para este programa"
+test -x "$(which wc)"||error_exit "No se puede ejecutar el comando 'wc' necesario para este programa"
+test -x "$(which awk)"||error_exit "No se puede ejecutar el comando 'awk' necesario para este programa"
+test -x "$(which grep)"||error_exit "No se puede ejecutar el comando 'grep' necesario para este programa"
+test -x "$(which date)"||error_exit "No se puede ejecutar el comando 'date' necesario para este programa"
+test -x "$(which lsb_release)"||error_exit "No se puede ejecutar el comando 'lsb_release' necesario para este programa"
+test -x "$(which uptime)"||error_exit "No se puede ejecutar el comando 'uptime' necesario para este programa"
+test -x "$(which lsof)"||error_exit "No se puede ejecutar el comando 'lsof' necesario para este programa"
+
+}
+
+interactive=
+filename=sysinfo_page.html
+filtroparticiones=0
+compcom 
+while [ "$1" != "" ]; do
+	
+   case $1 in
+       -f | --file )           shift
+								if [ "$1" = "" ]; then
+								echo "No ha introducido ningún nombre de fichero"
+								echo "Se utilizará el nombre estándar sysinfo_page.html"
+								else
+                               filename=$1
+                               fi
+                               ;;
+       -i | --interactive )    interactive=1
+                               ;;
+       -h | --help )           usage
+                               exit
+                               ;;
+	   -p | --partitions-filter ) shift 
+							   filtroparticiones=$1
+							   ;;
+       * )                     usage
+                               error_exit "Ha introducido una opción no válida"
+   esac
+   shift
+done
+
+if [ "$interactive" = "1" ]; then
+echo -n "Introduzca el nombre de su fichero: "
+read filename
+
+if [ -f "$filename" ]; then
+echo "El fichero ya existe. ¿Desea sobrescribirlo? (si/no)"
+read cocacola
+
+if [ "$cocacola" = "si" ]; then
+
+if [ -f "$filename.bak" ]; then
+error_exit "El archivo $filename.bak ya existe. No se hará nada"
+else
+mv $filename $filename.bak
+fi
+fi
+
+if [ "$cocacola" != "si" ]; then
+error_exit "No se modificará ningún archivo"
+
+fi
+fi
+fi
+
+$(imprimir_html)
+
+

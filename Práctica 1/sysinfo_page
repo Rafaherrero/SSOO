@@ -1,0 +1,79 @@
+#!/bin/bash
+
+# practica de la semana 6
+
+##### Constantes
+TITLE="Información del sistema para $HOSTNAME"
+RIGHT_NOW=$(date +"%x %r %Z")
+TIME_STAMP="Actualizada el $RIGHT_NOW por $USER"
+##### Funciones
+system_info()
+{
+	echo "<h2>Información de versión del sistema</h2>"
+	echo "<pre>"
+	lsb_release -idrc
+#	echo "<h2>Información de la CPU</h2>"
+#	lscpu
+#	echo "<br>"
+#	cat /proc/cpuinfo
+#	echo "<h2>Información de la RAM</h2>"
+#	free -h
+	echo "</pre>"
+}
+
+
+show_uptime()
+{
+	echo "<h2>Tiempo de encendido del sistema</h2>"
+	echo "<pre>"
+	uptime
+	echo "</pre>"
+
+}
+
+
+drive_space()
+{
+    	echo "<h2>Espacio libre en el/los discos</h2>"
+	echo "<pre>"
+	df -h /media
+#	df -h
+	echo "</pre>"
+}
+
+
+home_space()
+{
+	echo "<h2>Espacio que ocupa cada directorio personal</h2>"
+	echo "<pre>"
+	if [ $USER = root ]; then
+	echo "Usted es usuario root, por lo que se mostrarán todos los directorios"
+	du -skbh /home/*|sort -hr
+	else
+	echo "Solo se mostrará su directorio"
+	du -skbh /home/$USER
+	fi 
+	echo "</pre>"
+}
+##### Programa principal
+
+cat << _EOF_
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html;" charset="utf-8"/>
+  <title>$TITLE</title>
+</head>
+
+<body>
+  <h1>$TITLE</h1>
+   <p>$TIME_STAMP</p>
+   $(system_info)
+  $(show_uptime)
+  $(drive_space)
+  $(home_space)
+</body>
+</html>
+_EOF_
+
+
+
